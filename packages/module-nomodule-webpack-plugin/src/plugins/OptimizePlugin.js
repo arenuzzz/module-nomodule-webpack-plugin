@@ -27,6 +27,8 @@ import rollupPluginStripComments from '../lib/rollup-plugin-strip-comments';
 import { getCorejsVersion, createPerformanceTimings } from '../lib/util';
 import { WorkerPool } from '../lib/worker-pool';
 
+import HtmlWebpackEsmodulesPlugin from './HtmlWebpackEsmodulesPlugin';
+
 const NAME = 'OptimizePlugin';
 
 const DEFAULT_OPTIONS = {
@@ -190,36 +192,44 @@ export default class OptimizePlugin {
     end('Optimize Assets');
 
     const allPolyfills = new Set();
+
     const polyfillReasons = new Map();
-    transformed
-      .filter(Boolean)
-      .forEach(
-        ({ file, modern, modernFile, legacyFile, legacy, polyfills }) => {
-          for (const p of polyfills) {
-            allPolyfills.add(p);
-            let reasons = polyfillReasons.get(p);
-            if (!reasons) polyfillReasons.set(p, (reasons = []));
-            reasons.push(legacyFile);
-          }
 
-          compilation.assets[modernFile] = modern;
+    transformed.filter(Boolean).forEach(
+      ({
+        file,
+        modern,
+        modernFile,
+        legacyFile,
+        legacy,
+        // polyfills
+      }) => {
+        const polyfills = [this.options.polyfill];
 
-          delete compilation.assets[file];
-
-          if (legacy) {
-            compilation.assets[legacyFile] = legacy;
-          } else {
-            // @todo is this actually necessary or desirable?
-            // should it be ReplaceSource/RawSource with an empty value?
-            delete compilation.assets[legacyFile];
-          }
+        for (const p of polyfills) {
+          allPolyfills.add(p);
+          let reasons = polyfillReasons.get(p);
+          if (!reasons) polyfillReasons.set(p, (reasons = []));
+          reasons.push(legacyFile);
         }
-      );
+
+        compilation.assets[modernFile] = modern;
+
+        delete compilation.assets[file];
+
+        if (legacy) {
+          compilation.assets[legacyFile] = legacy;
+        } else {
+          // @todo is this actually necessary or desirable?
+          // should it be ReplaceSource/RawSource with an empty value?
+          delete compilation.assets[legacyFile];
+        }
+      }
+    );
 
     const polyfillsFilename =
       this.options.polyfillsFilename || 'polyfills.legacy.js';
-    const polyfills = Array.from([]);
-    // const polyfills = Array.from(allPolyfills);
+    const polyfills = Array.from(allPolyfills);
     let polyfillsAsset;
 
     if (polyfills.length) {
@@ -237,14 +247,14 @@ export default class OptimizePlugin {
     }
 
     timings.sort((t1, t2) => t1.start - t2.start);
-    if (this.options.verbose) {
-      await this.showOutputSummary(
-        timings,
-        polyfills,
-        polyfillReasons,
-        polyfillsAsset
-      );
-    }
+    // if (this.options.verbose) {
+    //   await this.showOutputSummary(
+    //     timings,
+    //     polyfills,
+    //     polyfillReasons,
+    //     polyfillsAsset
+    //   );
+    // }
   }
 
   async generatePolyfillsChunkCached(
@@ -297,52 +307,53 @@ export default class OptimizePlugin {
     }
 
     const polyfillsBundle = await rollup({
-      cache: this.rollupCache,
+      // cache: this.rollupCache,
       context: 'window',
-      perf: !!timings,
-      input: ENTRY,
+      // perf: !!timings,
+      input: polyfills[0],
       treeshake: {
         propertyReadSideEffects: false,
         tryCatchDeoptimization: false,
         unknownGlobalSideEffects: false,
       },
       plugins: [
-        {
-          name: 'entry',
-          resolveId: (id) => (id === ENTRY ? id : null),
-          load: (id) => (id === ENTRY ? entryContent : null),
-        },
-        {
-          name: 'core-js',
-          resolveId(id) {
-            if (/^regenerator-runtime(\/|$)/.test(id)) {
-              return require.resolve('regenerator-runtime/runtime');
-            }
-            const m = id.match(isCoreJsPath);
-            if (m && !/\.js$/.test(id)) {
-              return COREJS + m[1] + '.js';
-            }
-            return null;
-          },
-          load(id) {
-            const m = id.match(isCoreJsPath);
-            if (m && id.indexOf('?') === -1) {
-              return fs.readFile(COREJS + m[1], 'utf-8');
-            }
-            return null;
-          },
-        },
+        // {
+        //   name: 'entry',
+        //   resolveId: (id) => (id === ENTRY ? id : null),
+        //   load: (id) => (id === ENTRY ? entryContent : null),
+        // },
+        // {
+        //   name: 'core-js',
+        //   resolveId(id) {
+        //     if (/^regenerator-runtime(\/|$)/.test(id)) {
+        //       return require.resolve('regenerator-runtime/runtime');
+        //     }
+        //     const m = id.match(isCoreJsPath);
+        //     if (m && !/\.js$/.test(id)) {
+        //       return COREJS + m[1] + '.js';
+        //     }
+        //     return null;
+        //   },
+        // load(id) {
+        //   const m = id.match(isCoreJsPath);
+        //   if (m && id.indexOf('?') === -1) {
+        //     return fs.readFile(COREJS + m[1], 'utf-8');
+        //   }
+        //   return null;
+        // },
+        // },
         // coreJsPlugin(),
         commonjsPlugin({
           // ignoreGlobal: true,
           sourceMap: false,
         }),
-        nonCoreJsPolyfills.length &&
-          nodeResolvePlugin({
-            dedupe: nonCoreJsPolyfills,
-            only: nonCoreJsPolyfills,
-            preferBuiltins: false,
-          }),
+        // nonCoreJsPolyfills.length &&
+        nodeResolvePlugin({
+          browser: true,
+          // dedupe: nonCoreJsPolyfills,
+          // only: nonCoreJsPolyfills,
+          // preferBuiltins: false,
+        }),
         // {
         //   name: 'babel',
         //   renderChunk (source) {
@@ -356,12 +367,12 @@ export default class OptimizePlugin {
         //     });
         //   }
         // },
-        this.options.minify
-          ? rollupPluginTerserSimple()
-          : rollupPluginStripComments(),
+        // this.options.minify
+        //   ? rollupPluginTerserSimple()
+        //   : rollupPluginStripComments(),
       ].filter(Boolean),
     });
-    this.setRollupCache(polyfillsBundle.cache);
+    // this.setRollupCache(polyfillsBundle.cache);
 
     const result = await polyfillsBundle.generate({
       exports: 'none',
@@ -372,19 +383,20 @@ export default class OptimizePlugin {
       sourcemap: false,
       strict: false,
     });
+
     const output = result.output[0];
 
     // If verbose logging is enabled, bubble up some useful Rollup time information
-    if (timings) {
-      const times = polyfillsBundle.getTimings();
-      const add = (name, timing) => {
-        const t = times[timing];
-        if (t) timings.push({ depth: 2, name, duration: t[0] });
-      };
-      add('parse', '## parse modules');
-      add('node-resolve', '- plugin 2 (node-resolve) - resolveId (async)');
-      add('generate', '# GENERATE');
-    }
+    // if (timings) {
+    //   const times = polyfillsBundle.getTimings();
+    //   const add = (name, timing) => {
+    //     const t = times[timing];
+    //     if (t) timings.push({ depth: 2, name, duration: t[0] });
+    //   };
+    //   add('parse', '## parse modules');
+    //   add('node-resolve', '- plugin 2 (node-resolve) - resolveId (async)');
+    //   add('generate', '# GENERATE');
+    // }
 
     return output;
   }
@@ -532,6 +544,7 @@ export default class OptimizePlugin {
       workerPath: require.resolve('./worker'),
       concurrency: this.options.concurrency,
     });
+
     compiler.hooks.compilation.tap(NAME, (compilation) => {
       if (this.isWebpack5()) {
         compilation.hooks.processAssets.tapPromise(
@@ -554,5 +567,7 @@ export default class OptimizePlugin {
         });
       }
     });
+
+    new HtmlWebpackEsmodulesPlugin('legacy').apply(compiler);
   }
 }

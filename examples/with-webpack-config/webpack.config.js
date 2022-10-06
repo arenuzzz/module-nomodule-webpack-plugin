@@ -1,20 +1,30 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const OptimizePlugin = require('module-nomodule-webpack-plugin').OptimizePlugin;
-const ModuleNomodulePlugin =
-  require('module-nomodule-webpack-plugin').HtmlWebpackEsmodulesPlugin;
 
 module.exports = {
   mode: 'production',
   entry: './src/index.js',
   output: {
     path: path.resolve(__dirname, 'build'),
-    filename: '[name].[contenthash].js',
+    filename: 'js/[name].[contenthash:8].js',
+    chunkFilename: 'js/[name].[contenthash:8].chunk.js',
+  },
+  module: {
+    rules: [
+      {
+        test: /\.css$/i,
+        use: [MiniCssExtractPlugin.loader, 'css-loader'],
+      },
+    ],
   },
   plugins: [
-    new HtmlWebpackPlugin({ minify: false, inject: 'body' }),
-    new OptimizePlugin({ modernize: false }),
-    new ModuleNomodulePlugin('legacy'),
-    new ModuleNomodulePlugin('modern'),
+    new HtmlWebpackPlugin({ minify: false }),
+    new OptimizePlugin({
+      modernize: false,
+      polyfill: path.resolve(__dirname, 'src/polyfill.js'),
+    }),
+    new MiniCssExtractPlugin(),
   ],
 };

@@ -3,11 +3,9 @@ import DefaultHtmlWebpackPlugin from 'html-webpack-plugin';
 import fs from 'fs-extra';
 import { OUTPUT_MODES, safariFixScript, ID } from './constants';
 import { makeLoadScript } from './utils';
-import { version } from 'webpack';
+import { version, Compilation } from 'webpack';
 
 export { OUTPUT_MODES };
-
-console.log(DefaultHtmlWebpackPlugin);
 
 export default class HtmlWebpackEsmodulesPlugin {
   constructor(
@@ -43,28 +41,78 @@ export default class HtmlWebpackEsmodulesPlugin {
         this.HtmlWebpackPlugin.getHooks(
           compilation
         ).alterAssetTagGroups.tapAsync(
-          { name: ID, stage: Infinity },
-          this.alterAssetTagGroups.bind(this, compiler, compilation)
+          {
+            name: ID,
+            stage: Compilation.PROCESS_ASSETS_STAGE_OPTIMIZE_COMPATIBILITY,
+          },
+          (data, cb) => {
+            return this.alterAssetTagGroups2(compiler, compilation, data, cb);
+          }
         );
-        if (this.outputMode === OUTPUT_MODES.MINIMAL) {
-          this.HtmlWebpackPlugin.getHooks(compilation).beforeEmit.tap(
-            ID,
-            this.beforeEmitHtml.bind(this)
-          );
-        }
-      } else {
-        compilation.hooks.htmlWebpackPluginAlterAssetTags.tapAsync(
-          { name: ID, stage: Infinity },
-          this.alterAssetTagGroups.bind(this, compiler, compilation)
-        );
-        if (this.outputMode === OUTPUT_MODES.MINIMAL) {
-          compilation.hooks.htmlWebpackPluginAfterHtmlProcessing.tap(
-            ID,
-            this.beforeEmitHtml.bind(this)
-          );
-        }
+        // if (this.outputMode === OUTPUT_MODES.MINIMAL) {
+        //   this.HtmlWebpackPlugin.getHooks(compilation).beforeEmit.tap(
+        //     ID,
+        //     this.beforeEmitHtml.bind(this)
+        //   );
+        // }
       }
+
+      // else {
+      //   compilation.hooks.htmlWebpackPluginAlterAssetTags.tapAsync(
+      //     { name: ID, stage: Infinity },
+      //     this.alterAssetTagGroups.bind(this, compiler, compilation)
+      //   );
+      //   if (this.outputMode === OUTPUT_MODES.MINIMAL) {
+      //     compilation.hooks.htmlWebpackPluginAfterHtmlProcessing.tap(
+      //       ID,
+      //       this.beforeEmitHtml.bind(this)
+      //     );
+      //   }
+      // }
     });
+  }
+
+  alterAssetTagGroups2(
+    compiler,
+    compilation,
+    { plugin, bodyTags: body, headTags: head, ...rest },
+    cb
+  ) {
+    const assets = Object.keys(compilation.assets);
+
+    const modernMainSrc = assets.find(
+      (src) => src.includes('main') && src.includes('modern.js')
+    );
+    const polyfillSrc = assets.find((src) => src.includes('polyfills.legacy'));
+
+    if (modernMainSrc) {
+      head.push({
+        tagName: 'script',
+        voidTag: false,
+        meta: { plugin: 'html-webpack-plugin' },
+        attributes: {
+          defer: true,
+          type: 'module',
+          src: modernMainSrc,
+        },
+      });
+    }
+
+    if (polyfillSrc) {
+      head.unshift({
+        tagName: 'script',
+        voidTag: false,
+        meta: { plugin: 'html-webpack-plugin' },
+        attributes: {
+          defer: true,
+          src: polyfillSrc,
+        },
+      });
+    }
+
+    this.downloadEfficient2(head);
+
+    cb();
   }
 
   alterAssetTagGroups(
@@ -76,6 +124,11 @@ export default class HtmlWebpackEsmodulesPlugin {
     // Older webpack compat
     if (!body) body = rest.body;
     if (!head) head = rest.head;
+
+    // console.log('rest', rest);
+    // console.log('plugin', plugin);
+    // console.log('BODY', body);
+    // console.log('BODY', Object.keys(compilation.assets));
 
     const targetDir = compiler.options.output.path;
     // get stats, write to disk
@@ -93,6 +146,26 @@ export default class HtmlWebpackEsmodulesPlugin {
       const newBody = body.filter(
         (a) => a.tagName === 'script' && a.attributes
       );
+
+      const modernSrc = Object.keys(compilation.assets).find(
+        (src) => src.includes('main') && src.includes('modern.js')
+      );
+
+      if (modernSrc) {
+        newBody.push({
+          tagName: 'script',
+          voidTag: false,
+          meta: { plugin: 'html-webpack-plugin' },
+          attributes: {
+            defer: true,
+            type: 'module',
+            src: modernSrc,
+          },
+        });
+      }
+
+      console.log('newBody', newBody);
+
       if (this.mode === 'legacy') {
         // Empty nomodule in legacy build
         newBody.forEach((a) => {
@@ -156,6 +229,35 @@ export default class HtmlWebpackEsmodulesPlugin {
     data.html = data.html.replace(/\snomodule="">/g, ' nomodule>');
   }
 
+  downloadEfficient2(head) {
+    const legacyScriptsSrc = head
+      .filter(
+        (tag) => tag.tagName === 'script' && tag.attributes.type !== 'module'
+      )
+      .map((script) => script.attributes.src);
+    const modernScriptsSrc = head
+      .filter(
+        (tag) => tag.tagName === 'script' && tag.attributes.type === 'module'
+      )
+      .map((script) => script.attributes.src);
+
+    head
+      .filter((tag) => tag.tagName === 'script')
+      .forEach((s) => head.splice(head.indexOf(s), 1));
+
+    modernScriptsSrc.forEach((href) =>
+      head.push({
+        tagName: 'link',
+        attributes: { rel: 'modulepreload', href },
+        voidTag: true,
+      })
+    );
+
+    const loadScript = makeLoadScript(modernScriptsSrc, legacyScriptsSrc);
+
+    head.push({ tagName: 'script', innerHTML: loadScript, voidTag: false });
+  }
+
   downloadEfficient(existingAssets, body, head) {
     const isModern = this.mode === 'modern';
     const legacyScripts = (isModern ? existingAssets : body).filter(
@@ -176,7 +278,10 @@ export default class HtmlWebpackEsmodulesPlugin {
       });
     });
 
-    const loadScript = makeLoadScript(modernScripts, legacyScripts);
+    const loadScript = makeLoadScript(
+      [modernScripts[0].attributes.src],
+      [legacyScripts[0].attributes.src]
+    );
     head.push({ tagName: 'script', innerHTML: loadScript, voidTag: false });
   }
 
