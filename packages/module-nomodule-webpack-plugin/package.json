@@ -78,8 +78,8 @@
     "memory-fs": "^0.4.1",
     "microbundle": "^0.15.1",
     "preact": "^10.5.7",
-    "sucrase": "^3.16.0",
-    "ts-loader": "^9.2.6",
+    "sucrase": "^3.28.0",
+    "ts-loader": "^9.4.1",
     "webpack": "^5.65.0"
   },
   "dependencies": {

@@ -16,7 +16,7 @@
 
 import util from 'util';
 import { gzip } from 'zlib';
-import { promises as fs } from 'fs';
+// import { promises as fs } from 'fs';
 import * as defaultWebpack from 'webpack';
 import { SourceMapSource, RawSource } from 'webpack-sources';
 import { rollup } from 'rollup';
@@ -204,6 +204,7 @@ export default class OptimizePlugin {
         legacy,
         // polyfills
       }) => {
+        // const polyfills = [];
         const polyfills = [this.options.polyfill];
 
         for (const p of polyfills) {
@@ -367,9 +368,9 @@ export default class OptimizePlugin {
         //     });
         //   }
         // },
-        // this.options.minify
-        //   ? rollupPluginTerserSimple()
-        //   : rollupPluginStripComments(),
+        this.options.minify
+          ? rollupPluginTerserSimple()
+          : rollupPluginStripComments(),
       ].filter(Boolean),
     });
     // this.setRollupCache(polyfillsBundle.cache);
