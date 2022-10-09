@@ -569,6 +569,6 @@ export default class OptimizePlugin {
       }
     });
 
-    new HtmlWebpackEsmodulesPlugin('legacy').apply(compiler);
+    new HtmlWebpackEsmodulesPlugin(this.webpack).apply(compiler);
   }
 }
