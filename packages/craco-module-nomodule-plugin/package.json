@@ -1,0 +1,23 @@
+{
+  "name": "craco-module-nomodule-plugin",
+  "version": "0.1.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "craco-module-nomodule-plugin": "^0.1.0",
+    "esbuild-loader": "^2.20.0",
+    "module-nomodule-webpack-plugin": "^0.1.0"
+  },
+  "peerDependencies": {
+    "@craco/craco": "^6.0.0 || ^7.0.0 || ^7.0.0-alpha",
+    "react-scripts": "^5.0.0"
+  },
+  "devDependencies": {
+    "@craco/craco": "^7.0.0-alpha.8"
+  }
+}
