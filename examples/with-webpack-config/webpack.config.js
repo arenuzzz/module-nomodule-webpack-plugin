@@ -1,7 +1,7 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
-const OptimizePlugin = require('module-nomodule-webpack-plugin').OptimizePlugin;
+const OptimizePlugin = require('module-nomodule-webpack-plugin');
 
 module.exports = {
   mode: 'production',

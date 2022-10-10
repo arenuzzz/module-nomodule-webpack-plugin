@@ -1,31 +1,19 @@
 const path = require('path');
-const { addAfterLoader, removeLoaders, loaderByName } = require('@craco/craco');
-
-const OptimizePlugin = require('module-nomodule-webpack-plugin').OptimizePlugin;
+const CracoModuleNomodulePlugin = require('craco-module-nomodule-plugin');
 
 module.exports = {
-  webpack: {
-    configure: (config, { paths }) => {
-      const esbuildLoader = {
-        test: /\.(js|mjs|jsx|ts|tsx)$/,
-        loader: require.resolve('esbuild-loader'),
-        options: {
-          target: 'esnext',
-          loader: 'jsx',
-        },
-      };
-
-      addAfterLoader(config, loaderByName('babel-loader'), esbuildLoader);
-      removeLoaders(config, loaderByName('babel-loader'));
-
-      config.plugins.push(
-        new OptimizePlugin({
-          modernize: false,
+  plugins: [
+    {
+      plugin: CracoModuleNomodulePlugin,
+      options: {
+        enabled: true,
+        optimizeOptions: {
           polyfill: path.resolve(__dirname, 'src/polyfill.js'),
-        })
-      );
-
-      return config;
+        },
+        esbuildOptions: {
+          jsx: 'automatic',
+        },
+      },
     },
-  },
+  ],
 };

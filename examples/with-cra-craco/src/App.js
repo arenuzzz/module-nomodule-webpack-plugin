@@ -1,5 +1,9 @@
+import { Suspense, lazy } from 'react';
 import logo from './logo.svg';
 import './App.css';
+
+const Home = lazy(() => import('./pages/Home'));
+const About = lazy(() => import('./pages/About'));
 
 function App() {
   return (
@@ -17,6 +21,10 @@ function App() {
         >
           Learn React
         </a>
+        <Suspense fallback="">
+          <Home />
+          <About />
+        </Suspense>
       </header>
     </div>
   );
