@@ -1,26 +1,33 @@
+import DefaultHtmlWebpackPlugin from 'html-webpack-plugin';
+import * as defaultWebpack from 'webpack';
 import { NAME } from './constants';
 import { makeLoadScript } from './utils';
 
 export default class HtmlWebpackEsmodulesPlugin {
-  constructor(webpack) {
+  constructor(
+    legacy = true,
+    webpack = defaultWebpack,
+    htmlWebpackPlugin = DefaultHtmlWebpackPlugin
+  ) {
+    this.legacy = legacy;
     this.webpack = webpack;
-
-    this._isWebpack5 = webpack.version[0] === '5';
+    this.htmlWebpackPlugin = htmlWebpackPlugin;
+    this._isWebpack5 = this.webpack.version[0] === '5';
   }
 
   apply(compiler) {
     compiler.hooks.compilation.tap(NAME, (compilation) => {
       // Support newest and oldest version.
-      if (this.HtmlWebpackPlugin.getHooks) {
-        this.HtmlWebpackPlugin.getHooks(
-          compilation
-        ).alterAssetTagGroups.tapAsync(
-          {
-            name: NAME,
-            stage: Infinity,
-          },
-          this.alterAssetTagGroups.bind(this, compilation)
-        );
+      if (this.htmlWebpackPlugin.getHooks) {
+        this.htmlWebpackPlugin
+          .getHooks(compilation)
+          .alterAssetTagGroups.tapAsync(
+            {
+              name: NAME,
+              stage: Infinity,
+            },
+            this.alterAssetTagGroups.bind(this, compilation)
+          );
       } else {
         compilation.hooks.htmlWebpackPluginAlterAssetTags.tapAsync(
           { name: NAME, stage: Infinity },
@@ -39,42 +46,45 @@ export default class HtmlWebpackEsmodulesPlugin {
     if (!body) body = rest.body;
     if (!head) head = rest.head;
 
-    const assets = Object.keys(compilation.assets);
+    if (this.legacy) {
+      const assets = Object.keys(compilation.assets);
 
-    const modernMainSrc = assets.find(
-      (src) => src.includes('main') && src.includes('modern.js')
-    );
+      const legacyMainSrc = assets.find(
+        (src) => src.includes('main') && src.includes('legacy.js')
+      );
 
-    const polyfillSrc = assets.find((src) => src.includes('polyfills.legacy'));
+      // if (!legacyMainSrc) {
+      //   throw new Error('Legacy script is unavailable');
+      // }
 
-    if (modernMainSrc) {
+      const polyfillSrc = assets.find((src) =>
+        src.includes('polyfills.legacy')
+      );
+
+      if (polyfillSrc) {
+        head.unshift({
+          tagName: 'script',
+          voidTag: false,
+          meta: { plugin: 'html-webpack-plugin' },
+          attributes: {
+            type: 'nomodule',
+            src: polyfillSrc,
+          },
+        });
+      }
+
       head.push({
         tagName: 'script',
         voidTag: false,
         meta: { plugin: 'html-webpack-plugin' },
         attributes: {
-          defer: true,
-          type: 'module',
-          src: modernMainSrc,
+          type: 'nomodule',
+          src: legacyMainSrc,
         },
       });
-    } else {
-      throw new Error('Modern script is unavailable');
-    }
 
-    if (polyfillSrc) {
-      head.unshift({
-        tagName: 'script',
-        voidTag: false,
-        meta: { plugin: 'html-webpack-plugin' },
-        attributes: {
-          defer: true,
-          src: polyfillSrc,
-        },
-      });
+      this.downloadEfficient(head);
     }
-
-    this.downloadEfficient2(head);
 
     cb();
   }
@@ -82,13 +92,13 @@ export default class HtmlWebpackEsmodulesPlugin {
   downloadEfficient(head) {
     const legacyScriptsSrc = head
       .filter(
-        (tag) => tag.tagName === 'script' && tag.attributes.type !== 'module'
+        (tag) => tag.tagName === 'script' && tag.attributes.type === 'nomodule'
       )
       .map((script) => script.attributes.src);
 
     const modernScriptsSrc = head
       .filter(
-        (tag) => tag.tagName === 'script' && tag.attributes.type === 'module'
+        (tag) => tag.tagName === 'script' && tag.attributes.type !== 'nomodule'
       )
       .map((script) => script.attributes.src);
 
