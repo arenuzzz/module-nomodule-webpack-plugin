@@ -1,7 +1,7 @@
 node_modules
 .DS_Store
+dist
 build
-test/**/dist
 package-lock.json
 yarn.lock
 worker-plugin-*.tgz
