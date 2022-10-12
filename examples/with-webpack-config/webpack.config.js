@@ -9,22 +9,21 @@ module.exports = {
   output: {
     path: path.resolve(__dirname, 'build'),
     filename: 'js/[name].[contenthash:8].js',
-    chunkFilename: 'js/[name].[contenthash:8].chunk.js',
+    chunkFilename: 'js/[name].[contenthash:8].chunk.js'
   },
   module: {
     rules: [
       {
         test: /\.css$/i,
-        use: [MiniCssExtractPlugin.loader, 'css-loader'],
-      },
-    ],
+        use: [MiniCssExtractPlugin.loader, 'css-loader']
+      }
+    ]
   },
   plugins: [
     new HtmlWebpackPlugin({ minify: false }),
     new OptimizePlugin({
-      modernize: false,
-      polyfill: path.resolve(__dirname, 'src/polyfill.js'),
+      polyfill: path.resolve(__dirname, 'src/polyfill.js')
     }),
-    new MiniCssExtractPlugin(),
-  ],
+    new MiniCssExtractPlugin()
+  ]
 };
