@@ -1,5 +1,10 @@
 import React from 'react';
+import styled from 'styled-components';
+
+const Wrapper = styled.div`
+  color: red;
+`;
 
 export default function Home() {
-  return <div>Home</div>;
+  return <Wrapper>Home</Wrapper>;
 }
