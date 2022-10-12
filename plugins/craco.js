@@ -1,6 +1,6 @@
 const { loaderByName, getLoaders } = require('@craco/craco');
 const createBabelPresetReactApp = require('babel-preset-react-app/create');
-const OptimizePlugin = require('module-nomodule-webpack-plugin');
+const OptimizePlugin = require('../');
 
 require.resolve('react/jsx-runtime');
 

@@ -1,5 +1,5 @@
 const path = require('path');
-const CracoModuleNomodulePlugin = require('craco-module-nomodule-plugin');
+const CracoModuleNomodulePlugin = require('../../plugins/craco');
 
 module.exports = {
   webpack: {
