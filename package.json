@@ -1,6 +1,7 @@
 {
   "scripts": {
-    "dev": "npm run dev --workspaces"
+    "dev": "npm run dev --workspaces",
+    "build": "npm run build --workspaces"
   },
   "workspaces": [
     "packages/*",

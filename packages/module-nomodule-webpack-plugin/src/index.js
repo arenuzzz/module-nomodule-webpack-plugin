@@ -22,8 +22,8 @@ import { SourceMapSource, RawSource } from 'webpack-sources';
 import { rollup } from 'rollup';
 import commonjsPlugin from '@rollup/plugin-commonjs';
 import nodeResolvePlugin from '@rollup/plugin-node-resolve';
-import rollupPluginTerserSimple from './lib/rollup-plugin-terser-simple';
-import rollupPluginStripComments from './lib/rollup-plugin-strip-comments';
+// import rollupPluginTerserSimple from './lib/rollup-plugin-terser-simple';
+// import rollupPluginStripComments from './lib/rollup-plugin-strip-comments';
 import { getCorejsVersion, createPerformanceTimings } from './lib/util';
 import { WorkerPool } from './lib/worker-pool';
 
@@ -67,16 +67,16 @@ const DEFAULT_OPTIONS = {
    */
   verbose: true,
 
-  /**
-   * @default "polyfills.legacy.js"
-   */
-  polyfillsFilename: 'polyfills.legacy.js',
+  // /**
+  //  * @default "polyfills.legacy.js"
+  //  */
+  // polyfillsFilename: 'polyfills.legacy.js',
 
   /**
    * RegExp patterns of assets to exclude
    * @default []
    */
-  exclude: [],
+  exclude: []
 };
 
 export default class OptimizePlugin {
@@ -101,7 +101,7 @@ export default class OptimizePlugin {
     // }
 
     this.rollupCache = {
-      modules: [],
+      modules: []
     };
 
     /** @type {Map<string, Promise<import('rollup').OutputChunk>>} */
@@ -131,11 +131,12 @@ export default class OptimizePlugin {
       minify: this.options.minify,
       downlevel: this.options.downlevel,
       modernize: this.options.modernize,
-      timings: this.options.verbose,
+      timings: this.options.verbose
     };
 
     const processing = new WeakMap();
     const chunkAssets = Array.from(compilation.additionalChunkAssets || []);
+
     const files = [...chunkFiles, ...chunkAssets].filter((asset) => {
       for (const pattern of this.options.exclude) {
         if (pattern.test(asset)) {
@@ -149,7 +150,7 @@ export default class OptimizePlugin {
     let transformed;
     try {
       transformed = await Promise.all(
-        files.map((file) => {
+        files.map(async (file) => {
           // ignore non-JS files
           if (!file.match(/\.m?[jt]sx?$/i)) return undefined;
           const asset = compilation.assets[file];
@@ -163,8 +164,14 @@ export default class OptimizePlugin {
             source = asset.source();
           }
 
-          const original = { file, source, map, options };
-          // @ts-ignore-next
+          const original = {
+            file,
+            source,
+            map,
+            options
+          };
+
+          // // @ts-ignore-next
           const result = this.workerPool.enqueue(original);
           pending = result
             .then(this.buildResultSources.bind(this, original))
@@ -201,33 +208,24 @@ export default class OptimizePlugin {
         file,
         modern,
         legacyFile,
-        legacy,
+        legacy
         // polyfills
       }) => {
         // const polyfills = [];
         const polyfills = this.options.polyfill ? [this.options.polyfill] : [];
-
         for (const p of polyfills) {
           allPolyfills.add(p);
           let reasons = polyfillReasons.get(p);
           if (!reasons) polyfillReasons.set(p, (reasons = []));
           reasons.push(legacyFile);
         }
-
         compilation.assets[file] = modern;
-
         if (legacy) {
           compilation.assets[legacyFile] = legacy;
-        } else {
-          // @todo is this actually necessary or desirable?
-          // should it be ReplaceSource/RawSource with an empty value?
-          delete compilation.assets[legacyFile];
         }
       }
     );
 
-    const polyfillsFilename =
-      this.options.polyfillsFilename || 'polyfills.legacy.js';
     const polyfills = Array.from(allPolyfills);
     let polyfillsAsset;
 
@@ -236,13 +234,11 @@ export default class OptimizePlugin {
       polyfillsAsset = await this.generatePolyfillsChunkCached(
         polyfills,
         cwd,
-        polyfillsFilename,
         timings
       );
-      compilation.assets[polyfillsFilename] = polyfillsAsset;
+
+      compilation.assets[polyfillsAsset._name] = polyfillsAsset;
       end('Bundle Polyfills');
-    } else {
-      delete compilation.assets[polyfillsFilename];
     }
 
     timings.sort((t1, t2) => t1.start - t2.start);
@@ -256,12 +252,7 @@ export default class OptimizePlugin {
     }
   }
 
-  async generatePolyfillsChunkCached(
-    polyfills,
-    cwd,
-    polyfillsFilename,
-    timings
-  ) {
+  async generatePolyfillsChunkCached(polyfills, cwd, timings) {
     const polyfillsKey = polyfills.join('\n');
 
     let generatePolyfills = this.polyfillsCache.get(polyfillsKey);
@@ -274,7 +265,7 @@ export default class OptimizePlugin {
 
     return new SourceMapSource(
       output.code,
-      polyfillsFilename,
+      output.fileName,
       // @ts-ignore
       output.map
     );
@@ -308,12 +299,13 @@ export default class OptimizePlugin {
     const polyfillsBundle = await rollup({
       // cache: this.rollupCache,
       context: 'window',
+
       // perf: !!timings,
       input: polyfills[0],
       treeshake: {
         propertyReadSideEffects: false,
         tryCatchDeoptimization: false,
-        unknownGlobalSideEffects: false,
+        unknownGlobalSideEffects: false
       },
       plugins: [
         // {
@@ -344,51 +336,52 @@ export default class OptimizePlugin {
         // coreJsPlugin(),
         commonjsPlugin({
           // ignoreGlobal: true,
-          sourceMap: false,
+          sourceMap: false
         }),
         // nonCoreJsPolyfills.length &&
         nodeResolvePlugin({
-          browser: true,
+          browser: true
           // dedupe: nonCoreJsPolyfills,
           // only: nonCoreJsPolyfills,
           // preferBuiltins: false,
         }),
-        // {
-        //   name: 'babel',
-        //   renderChunk(source) {
-        //     return require('@babel/core').transformAsync(source, {
-        //       sourceMaps: true,
-        //       // minified: true,
-        //       shouldPrintComment: () => false,
-        //       presets: [
-        //         [
-        //           require('@babel/preset-env'),
-        //           {
-        //             loose: true,
-        //             modules: false,
-        //             corejs: 3,
-        //             useBuiltIns: 'entry',
-        //           },
-        //         ],
-        //       ],
-        //     });
-        //   },
-        // },
+        {
+          name: 'babel',
+          renderChunk(source) {
+            return require('@babel/core').transformAsync(source, {
+              sourceMaps: true,
+              // minified: true,
+              shouldPrintComment: () => false,
+              presets: [
+                [
+                  require('@babel/preset-env'),
+                  {
+                    loose: true,
+                    modules: false,
+                    corejs: 3,
+                    useBuiltIns: 'entry'
+                  }
+                ]
+              ]
+            });
+          }
+        }
         // this.options.minify
         //   ? rollupPluginTerserSimple()
         //   : rollupPluginStripComments(),
-      ].filter(Boolean),
+      ].filter(Boolean)
     });
     // this.setRollupCache(polyfillsBundle.cache);
 
     const result = await polyfillsBundle.generate({
+      entryFileNames: 'static/js/polyfills.[hash].js',
       exports: 'none',
       externalLiveBindings: false,
       freeze: false,
       compact: true,
       format: 'iife',
       sourcemap: false,
-      strict: false,
+      strict: false
     });
 
     const output = result.output[0];
@@ -497,11 +490,12 @@ export default class OptimizePlugin {
     }
 
     return {
+      original,
       file,
       legacyFile,
       modern,
       legacy,
-      polyfills: result.polyfills,
+      polyfills: result.polyfills
     };
   }
 
@@ -546,7 +540,7 @@ export default class OptimizePlugin {
   apply(compiler) {
     this.workerPool = new WorkerPool({
       workerPath: require.resolve('./worker'),
-      concurrency: this.options.concurrency,
+      concurrency: this.options.concurrency
     });
 
     compiler.hooks.compilation.tap(NAME, (compilation) => {
@@ -554,7 +548,7 @@ export default class OptimizePlugin {
         compilation.hooks.processAssets.tapPromise(
           {
             name: NAME,
-            stage: this.webpack.Compilation.PROCESS_ASSETS_STAGE_OPTIMIZE,
+            stage: this.webpack.Compilation.PROCESS_ASSETS_STAGE_OPTIMIZE
           },
           (assets) => {
             const chunkFiles = Object.keys(assets);

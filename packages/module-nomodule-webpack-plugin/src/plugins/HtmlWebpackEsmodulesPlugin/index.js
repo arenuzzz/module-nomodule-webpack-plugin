@@ -53,13 +53,11 @@ export default class HtmlWebpackEsmodulesPlugin {
         (src) => src.includes('main') && src.includes('legacy.js')
       );
 
-      // if (!legacyMainSrc) {
-      //   throw new Error('Legacy script is unavailable');
-      // }
+      if (!legacyMainSrc) {
+        throw new Error('Legacy script is unavailable');
+      }
 
-      const polyfillSrc = assets.find((src) =>
-        src.includes('polyfills.legacy')
-      );
+      const polyfillSrc = assets.find((src) => src.includes('polyfills'));
 
       if (polyfillSrc) {
         head.unshift({

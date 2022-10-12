@@ -1,49 +1,66 @@
-const fs = require('fs');
-const { loaderByName, removeLoaders, addAfterLoader } = require('@craco/craco');
+const { loaderByName, getLoaders } = require('@craco/craco');
+const createBabelPresetReactApp = require('babel-preset-react-app/create');
 const OptimizePlugin = require('module-nomodule-webpack-plugin');
+
+require.resolve('react/jsx-runtime');
+
+const babelPreset = (api, opts) => {
+  const preset = createBabelPresetReactApp(
+    api,
+    Object.assign({ helpers: false }, opts),
+    opts.env
+  );
+
+  preset.presets.splice(0, 1);
+
+  return preset;
+};
 
 module.exports = {
   overrideWebpackConfig: ({
     webpackConfig,
-    pluginOptions: {
-      enabled,
-      include,
-      esbuildOptions,
-      optimizeOptions,
-      htmlWebpackPlugin,
-    } = {},
-    context: { paths },
+    pluginOptions: { enable, optimizeOptions, htmlWebpackPlugin } = {},
+    context: { env }
   }) => {
-    if (!enabled) {
+    if (!enable) {
       return webpackConfig;
     }
 
-    const useTypeScript = fs.existsSync(paths.appTsConfig);
-
     const loaderOptions = {
-      loader: useTypeScript ? 'tsx' : 'jsx',
-      target: 'esnext',
-      sourcemap: 'both',
-      ...(esbuildOptions || {}),
+      presets: [
+        [
+          '@babel/preset-env',
+          {
+            targets: {
+              esmodules: true
+            }
+          }
+        ],
+        [babelPreset, { env, runtime: 'automatic' }]
+      ].filter(Boolean)
     };
 
     const optimizePluginOptions = {
-      ...(optimizeOptions || {}),
+      ...(optimizeOptions || {})
     };
 
-    addAfterLoader(webpackConfig, loaderByName('babel-loader'), {
-      test: /\.(js|mjs|jsx|ts|tsx)$/,
-      include: [paths.appSrc, ...(include || [])],
-      loader: require.resolve('esbuild-loader'),
-      options: loaderOptions,
-    });
+    const { hasFoundAny, matches } = getLoaders(
+      webpackConfig,
+      loaderByName('babel-loader')
+    );
 
-    removeLoaders(webpackConfig, loaderByName('babel-loader'));
+    if (!hasFoundAny) {
+      throw new Error('Babel-loader is not found!');
+    }
+
+    matches.forEach(({ loader }) => {
+      Object.assign(loader.options, loaderOptions);
+    });
 
     webpackConfig.plugins.push(
       new OptimizePlugin(optimizePluginOptions, undefined, htmlWebpackPlugin)
     );
 
     return webpackConfig;
-  },
+  }
 };
