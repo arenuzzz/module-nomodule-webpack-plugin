@@ -1,11 +1,10 @@
 {
   "name": "module-nomodule-webpack-plugin",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Webpack plugin to optimize bundles.",
   "main": "dist/index.js",
   "repository": "arenuzzz/module-nomodule-webpack-plugin",
   "scripts": {
-    "install": "npm run build",
     "build": "microbundle --target node --format cjs --no-compress src/*.js",
     "prepack": "npm run build",
     "dev": "microbundle watch --target node --format cjs --no-sourcemap --strict  --no-compress src/*.js ",
