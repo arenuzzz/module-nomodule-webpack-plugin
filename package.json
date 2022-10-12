@@ -1,4 +1,8 @@
 {
+  "name": "nodule-nomodule-plugin",
+  "version": "0.1.2",
+  "author": "arenuzzz",
+  "license": "MIT",
   "scripts": {
     "dev": "npm run dev --workspaces",
     "build": "npm run build -w module-nomodule-webpack-plugin"
