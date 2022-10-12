@@ -5,6 +5,7 @@
   "main": "dist/index.js",
   "repository": "arenuzzz/module-nomodule-webpack-plugin",
   "scripts": {
+    "install": "npm run build",
     "build": "microbundle --target node --format cjs --no-compress src/*.js",
     "prepack": "npm run build",
     "dev": "microbundle watch --target node --format cjs --no-sourcemap --strict  --no-compress src/*.js ",
