@@ -1,5 +1,6 @@
 const path = require('path');
-const CracoModuleNomodulePlugin = require('../../plugins/craco');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+const CracoModuleNomodulePlugin = require('../../lib/craco-plugin');
 
 module.exports = {
   webpack: {
@@ -14,8 +15,10 @@ module.exports = {
       plugin: CracoModuleNomodulePlugin,
       options: {
         enable: true,
+        htmlWebpackPlugin: HtmlWebpackPlugin,
         optimizeOptions: {
-          polyfill: path.resolve(__dirname, 'src/polyfill.js')
+          polyfillsOutputPath: 'static/js',
+          polyfillsPath: path.resolve(__dirname, 'src/polyfill.js')
         }
       }
     }

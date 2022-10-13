@@ -14,16 +14,42 @@ module.exports = {
   module: {
     rules: [
       {
+        test: /\.m?js$/,
+        exclude: /(node_modules)/,
+        use: {
+          loader: 'babel-loader',
+          options: {
+            presets: [
+              [
+                '@babel/preset-env',
+                {
+                  bugfixes: true,
+                  targets: {
+                    esmodules: true
+                  }
+                }
+              ]
+            ]
+          }
+        }
+      },
+      {
         test: /\.css$/i,
         use: [MiniCssExtractPlugin.loader, 'css-loader']
       }
     ]
   },
   plugins: [
-    new HtmlWebpackPlugin({ minify: false }),
-    new OptimizePlugin({
-      polyfill: path.resolve(__dirname, 'src/polyfill.js')
-    }),
+    new HtmlWebpackPlugin({ minify: false, publicPath: '/' }),
+    new OptimizePlugin(
+      {
+        verbose: true,
+        polyfillsPath: path.resolve(__dirname, 'src/polyfill.js'),
+        polyfillsOutputPath: 'js'
+      },
+      undefined,
+      HtmlWebpackPlugin
+    ),
     new MiniCssExtractPlugin()
   ]
 };

@@ -1,17 +1,29 @@
 {
   "name": "with-webpack-config",
   "version": "1.0.0",
-  "description": "",
   "scripts": {
     "build": "webpack --config ./webpack.config.js",
     "dev": "webpack --config ./webpack.config.js"
   },
-  "author": "",
-  "license": "ISC",
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
   "dependencies": {
-    "react-app-polyfill": "^3.0.0"
+    "es6-promise": "^4.2.8"
   },
   "devDependencies": {
+    "@babel/core": "^7.19.3",
+    "@babel/preset-env": "^7.19.4",
+    "babel-loader": "^8.2.5",
     "css-loader": "^6.7.1",
     "html-webpack-plugin": "^5.5.0",
     "mini-css-extract-plugin": "^2.6.1",

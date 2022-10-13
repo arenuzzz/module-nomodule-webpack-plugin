@@ -14,7 +14,6 @@ async function F(page) {
 
 F('home');
 
-var H1 = document.createElement('h1');
+const H1 = document.createElement('h1');
 H1.innerHTML = 'APP';
-
 document.body.appendChild(H1);
