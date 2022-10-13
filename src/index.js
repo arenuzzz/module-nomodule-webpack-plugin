@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
+import path from 'path';
 import util from 'util';
 import { gzip } from 'zlib';
 // import { promises as fs } from 'fs';
@@ -64,13 +64,20 @@ const DEFAULT_OPTIONS = {
 
   /**
    * Show logs containing performance information and inlined polyfill.
+   * @default false
    */
-  verbose: true,
+  verbose: false,
 
-  // /**
-  //  * @default "polyfills.legacy.js"
-  //  */
-  // polyfillsFilename: 'polyfills.legacy.js',
+  /**
+   * Path to your polyfills
+   * @default undefined
+   */
+  polyfillsPath: undefined,
+
+  /**
+   * @default "/"
+   */
+  polyfillsOutputPath: '/',
 
   /**
    * RegExp patterns of assets to exclude
@@ -200,44 +207,48 @@ export default class OptimizePlugin {
     end('Optimize Assets');
 
     const allPolyfills = new Set();
-
     const polyfillReasons = new Map();
 
-    transformed.filter(Boolean).forEach(
-      ({
-        file,
-        modern,
-        legacyFile,
-        legacy
-        // polyfills
-      }) => {
-        // const polyfills = [];
-        const polyfills = this.options.polyfill ? [this.options.polyfill] : [];
-        for (const p of polyfills) {
-          allPolyfills.add(p);
-          let reasons = polyfillReasons.get(p);
-          if (!reasons) polyfillReasons.set(p, (reasons = []));
-          reasons.push(legacyFile);
+    transformed
+      .filter(Boolean)
+      .forEach(
+        ({ file, modern, legacyFile, legacy, polyfills: coreJsPolyfills }) => {
+          const polyfills = [
+            ...coreJsPolyfills,
+            this.options.polyfillsPath
+          ].filter(Boolean);
+
+          for (const p of polyfills) {
+            allPolyfills.add(p);
+            let reasons = polyfillReasons.get(p);
+            if (!reasons) polyfillReasons.set(p, (reasons = []));
+            reasons.push(legacyFile);
+          }
+
+          compilation.assets[file] = modern;
+
+          if (legacy) {
+            compilation.assets[legacyFile] = legacy;
+          }
         }
-        compilation.assets[file] = modern;
-        if (legacy) {
-          compilation.assets[legacyFile] = legacy;
-        }
-      }
-    );
+      );
 
     const polyfills = Array.from(allPolyfills);
+
     let polyfillsAsset;
 
     if (polyfills.length) {
       start('Bundle Polyfills');
-      polyfillsAsset = await this.generatePolyfillsChunkCached(
+      const chunk = await this.generatePolyfillsChunkCached(
         polyfills,
         cwd,
-        timings
+        timings,
+        this.options.polyfillsOutputPath
       );
 
-      compilation.assets[polyfillsAsset._name] = polyfillsAsset;
+      polyfillsAsset = chunk.asset;
+
+      compilation.assets[chunk.fileName] = chunk.asset;
       end('Bundle Polyfills');
     }
 
@@ -252,7 +263,7 @@ export default class OptimizePlugin {
     }
   }
 
-  async generatePolyfillsChunkCached(polyfills, cwd, timings) {
+  async generatePolyfillsChunkCached(polyfills, cwd, timings, publicPath) {
     const polyfillsKey = polyfills.join('\n');
 
     let generatePolyfills = this.polyfillsCache.get(polyfillsKey);
@@ -263,45 +274,50 @@ export default class OptimizePlugin {
 
     const output = await generatePolyfills;
 
-    return new SourceMapSource(
-      output.code,
-      output.fileName,
-      // @ts-ignore
-      output.map
-    );
+    const fileName = path.join(publicPath, output.fileName);
+
+    return {
+      fileName,
+      asset: new SourceMapSource(
+        output.code,
+        fileName,
+        // @ts-ignore
+        output.map
+      )
+    };
   }
 
   /**
    * @todo Write cached polyfills chunk to disk
    */
   async generatePolyfillsChunk(polyfills, cwd, timings) {
-    const ENTRY = '\0entry';
+    // const ENTRY = '\0entry';
 
-    const entryContent = polyfills.reduce(
-      (str, p) => `${str}\nimport "${p.replace('.js', '')}";`,
-      ''
-    );
+    // const entryContent = polyfills.reduce(
+    //   (str, p) => `${str}\nimport "${p.replace('.js', '')}";`,
+    //   ''
+    // );
 
-    const COREJS = require
-      .resolve('core-js/package.json')
-      .replace('package.json', '');
-    const isCoreJsPath = /(?:^|\/)core-js\/(.+)$/;
-    const nonCoreJsPolyfills = polyfills.filter(
-      (p) => !/(core-js|regenerator-runtime)/.test(p)
-    );
+    // const COREJS = require
+    //   .resolve('core-js/package.json')
+    //   .replace('package.json', '');
+    // const isCoreJsPath = /(?:^|\/)core-js\/(.+)$/;
+    // const nonCoreJsPolyfills = polyfills.filter(
+    //   (p) => !/(core-js|regenerator-runtime)/.test(p)
+    // );
 
-    if (timings && nonCoreJsPolyfills.length) {
-      console.log(
-        `  Bundling ${nonCoreJsPolyfills.length} unrecognized polyfills.`
-      );
-    }
+    // if (timings && nonCoreJsPolyfills.length) {
+    //   console.log(
+    //     `  Bundling ${nonCoreJsPolyfills.length} unrecognized polyfills.`
+    //   );
+    // }
 
     const polyfillsBundle = await rollup({
       // cache: this.rollupCache,
       context: 'window',
 
       // perf: !!timings,
-      input: polyfills[0],
+      input: polyfills,
       treeshake: {
         propertyReadSideEffects: false,
         tryCatchDeoptimization: false,
@@ -356,10 +372,9 @@ export default class OptimizePlugin {
                 [
                   require('@babel/preset-env'),
                   {
-                    loose: true,
-                    modules: false,
-                    corejs: 3,
-                    useBuiltIns: 'entry'
+                    corejs: getCorejsVersion(),
+                    useBuiltIns: 'entry',
+                    exclude: ['transform-typeof-symbol']
                   }
                 ]
               ]
@@ -374,7 +389,7 @@ export default class OptimizePlugin {
     // this.setRollupCache(polyfillsBundle.cache);
 
     const result = await polyfillsBundle.generate({
-      entryFileNames: 'static/js/polyfills.[hash].js',
+      entryFileNames: 'polyfills.[hash].js',
       exports: 'none',
       externalLiveBindings: false,
       freeze: false,

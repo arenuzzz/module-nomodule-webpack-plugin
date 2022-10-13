@@ -156,9 +156,9 @@ export async function process({ file, source, map, options = {} }) {
         [
           '@babel/preset-env',
           {
-            targets: ['>0.2%', 'not dead', 'not op_mini all'],
             corejs: options.corejsVersion,
-            useBuiltIns: 'entry'
+            useBuiltIns: 'entry',
+            exclude: ['transform-typeof-symbol']
           }
         ]
       ],
@@ -176,7 +176,7 @@ export async function process({ file, source, map, options = {} }) {
     // modern: sanitizeResult(modern),
     // legacy: legacy && { source, map },
     legacy: legacy && sanitizeResult(legacy),
-    // polyfills: [],
+    polyfills: [],
     // polyfills: Array.from(polyfills),
     timings
   };

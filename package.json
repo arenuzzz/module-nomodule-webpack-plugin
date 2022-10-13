@@ -100,7 +100,9 @@
   },
   "peerDependencies": {
     "@babel/preset-env": "^7.19.3",
-    "html-webpack-plugin": ">= 4.0",
-    "webpack": ">= 4"
+    "html-webpack-plugin": ">= 5.0",
+    "webpack": ">= 5",
+    "@craco/craco": ">= 6.4.5",
+    "babel-preset-react-app": ">= 9.0.0"
   }
 }

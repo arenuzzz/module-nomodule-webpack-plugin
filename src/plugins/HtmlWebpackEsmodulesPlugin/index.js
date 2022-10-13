@@ -1,3 +1,4 @@
+import path from 'path';
 import DefaultHtmlWebpackPlugin from 'html-webpack-plugin';
 import * as defaultWebpack from 'webpack';
 import { NAME } from './constants';
@@ -24,7 +25,7 @@ export default class HtmlWebpackEsmodulesPlugin {
           .alterAssetTagGroups.tapAsync(
             {
               name: NAME,
-              stage: Infinity,
+              stage: Infinity
             },
             this.alterAssetTagGroups.bind(this, compilation)
           );
@@ -39,7 +40,7 @@ export default class HtmlWebpackEsmodulesPlugin {
 
   alterAssetTagGroups(
     compilation,
-    { plugin, bodyTags: body, headTags: head, ...rest },
+    { plugin, bodyTags: body, headTags: head, publicPath, ...rest },
     cb
   ) {
     // Older webpack compat
@@ -49,37 +50,27 @@ export default class HtmlWebpackEsmodulesPlugin {
     if (this.legacy) {
       const assets = Object.keys(compilation.assets);
 
-      const legacyMainSrc = assets.find(
-        (src) => src.includes('main') && src.includes('legacy.js')
+      const legacyMainSrc = assets.find((src) =>
+        src.match(/\bmain\..+\.legacy\.js/)
       );
 
       if (!legacyMainSrc) {
         throw new Error('Legacy script is unavailable');
       }
 
-      const polyfillSrc = assets.find((src) => src.includes('polyfills'));
+      const polyfillSrc = assets.find((src) =>
+        src.match(/\bpolyfills\..+\.js/)
+      );
 
-      if (polyfillSrc) {
-        head.unshift({
+      head.unshift(
+        ...[polyfillSrc, legacyMainSrc].filter(Boolean).map((src) => ({
           tagName: 'script',
-          voidTag: false,
-          meta: { plugin: 'html-webpack-plugin' },
           attributes: {
             type: 'nomodule',
-            src: polyfillSrc,
-          },
-        });
-      }
-
-      head.push({
-        tagName: 'script',
-        voidTag: false,
-        meta: { plugin: 'html-webpack-plugin' },
-        attributes: {
-          type: 'nomodule',
-          src: legacyMainSrc,
-        },
-      });
+            src: path.join(publicPath, src)
+          }
+        }))
+      );
 
       this.downloadEfficient(head);
     }
@@ -104,16 +95,16 @@ export default class HtmlWebpackEsmodulesPlugin {
       .filter((tag) => tag.tagName === 'script')
       .forEach((s) => head.splice(head.indexOf(s), 1));
 
-    modernScriptsSrc.forEach((href) =>
-      head.push({
-        tagName: 'link',
-        attributes: { rel: 'modulepreload', href },
-        voidTag: true,
-      })
-    );
+    // modernScriptsSrc.forEach((href) =>
+    //   head.push({
+    //     tagName: 'link',
+    //     attributes: { rel: 'modulepreload', href },
+    //     voidTag: true
+    //   })
+    // );
 
     const loadScript = makeLoadScript(modernScriptsSrc, legacyScriptsSrc);
 
-    head.push({ tagName: 'script', innerHTML: loadScript, voidTag: false });
+    head.push({ tagName: 'script', innerHTML: loadScript });
   }
 }
