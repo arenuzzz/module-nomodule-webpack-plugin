@@ -55,7 +55,7 @@
   "files": [
     "src",
     "dist",
-    "plugins"
+    "lib"
   ],
   "keywords": [
     "webpack",
