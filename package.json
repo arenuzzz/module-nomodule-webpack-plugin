@@ -3,14 +3,14 @@
   "version": "0.1.7",
   "description": "Webpack plugin to optimize bundles.",
   "main": "dist/index.js",
-  "repository": "arenuzzz/module-nomodule-webpack-plugin",
+  "repository": "devmaxxx/module-nomodule-webpack-plugin",
   "scripts": {
     "prepare": "npm run build",
     "build": "microbundle --target node --format cjs --no-compress src/*.js",
     "prepack": "npm run build",
     "dev": "microbundle watch --target node --format cjs --no-sourcemap --strict  --no-compress src/*.js ",
     "test": "jest --verbose",
-    "release": "npm t && git commit -am $npm_package_version && git tag $npm_package_version && git push && git push --tags && npm publish"
+    "release": "git commit -am $npm_package_version && git tag $npm_package_version && git push && git push --tags && npm publish"
   },
   "babel": {
     "env": {
@@ -57,14 +57,9 @@
     "dist",
     "lib"
   ],
-  "keywords": [
-    "webpack",
-    "plugin",
-    "minify",
-    "optimize"
-  ],
-  "author": "arenuzzz",
-  "license": "MIT",
+  "keywords": [],
+  "author": "devmaxxx",
+  "license": "Apache-2.0",
   "devDependencies": {
     "@types/jest": "^26.0.15",
     "babel-plugin-transform-es2015-modules-commonjs": "^6.26.2",
