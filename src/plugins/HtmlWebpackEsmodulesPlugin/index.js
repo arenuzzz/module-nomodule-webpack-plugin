@@ -18,29 +18,19 @@ export default class HtmlWebpackEsmodulesPlugin {
 
   apply(compiler) {
     compiler.hooks.compilation.tap(NAME, (compilation) => {
-      // Support newest and oldest version.
-      if (this.htmlWebpackPlugin.getHooks) {
-        this.htmlWebpackPlugin
-          .getHooks(compilation)
-          .alterAssetTagGroups.tapAsync(
-            {
-              name: NAME,
-              stage: Infinity
-            },
-            this.alterAssetTagGroups.bind(this, compilation)
-          );
-      } else {
-        compilation.hooks.htmlWebpackPluginAlterAssetTags.tapAsync(
-          { name: NAME, stage: Infinity },
-          this.alterAssetTagGroups.bind(this, compilation)
-        );
-      }
+      this.htmlWebpackPlugin.getHooks(compilation).alterAssetTagGroups.tapAsync(
+        {
+          name: NAME,
+          stage: Infinity
+        },
+        this.alterAssetTagGroups.bind(this, compilation)
+      );
     });
   }
 
   alterAssetTagGroups(
     compilation,
-    { plugin, bodyTags: body, headTags: head, publicPath, ...rest },
+    { bodyTags: body, headTags: head, publicPath, ...rest },
     cb
   ) {
     // Older webpack compat
@@ -72,13 +62,13 @@ export default class HtmlWebpackEsmodulesPlugin {
         }))
       );
 
-      this.downloadEfficient(head);
+      this.downloadEfficient(head, body);
     }
 
     cb();
   }
 
-  downloadEfficient(head) {
+  downloadEfficient(head, body) {
     const legacyScriptsSrc = head
       .filter(
         (tag) => tag.tagName === 'script' && tag.attributes.type === 'nomodule'
@@ -95,16 +85,16 @@ export default class HtmlWebpackEsmodulesPlugin {
       .filter((tag) => tag.tagName === 'script')
       .forEach((s) => head.splice(head.indexOf(s), 1));
 
-    // modernScriptsSrc.forEach((href) =>
-    //   head.push({
-    //     tagName: 'link',
-    //     attributes: { rel: 'modulepreload', href },
-    //     voidTag: true
-    //   })
-    // );
+    modernScriptsSrc.forEach((href) =>
+      head.push({
+        tagName: 'link',
+        attributes: { rel: 'modulepreload', href },
+        voidTag: true
+      })
+    );
 
     const loadScript = makeLoadScript(modernScriptsSrc, legacyScriptsSrc);
 
-    head.push({ tagName: 'script', innerHTML: loadScript });
+    body.push({ tagName: 'script', innerHTML: loadScript });
   }
 }
