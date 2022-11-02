@@ -1,6 +1,6 @@
 {
   "name": "module-nomodule-webpack-plugin",
-  "version": "0.1.9",
+  "version": "0.2.0",
   "description": "Webpack plugin to optimize bundles.",
   "main": "dist/index.js",
   "repository": "devmaxxx/module-nomodule-webpack-plugin",
@@ -10,7 +10,7 @@
     "prepack": "npm run build",
     "dev": "microbundle watch --target node --format cjs --no-sourcemap --strict  --no-compress src/*.js ",
     "test": "jest --verbose",
-    "release": "git commit -am $npm_package_version && git tag $npm_package_version && git push && git push --tags && npm publish"
+    "release": "git tag $npm_package_version && git push && git push --tags && npm publish"
   },
   "babel": {
     "env": {
