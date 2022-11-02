@@ -1,6 +1,6 @@
 {
   "name": "module-nomodule-webpack-plugin",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "Webpack plugin to optimize bundles.",
   "main": "dist/index.js",
   "repository": "devmaxxx/module-nomodule-webpack-plugin",
