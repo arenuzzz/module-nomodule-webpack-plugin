@@ -225,7 +225,7 @@ export default class OptimizePlugin {
             reasons.push(legacyFile);
           }
 
-          compilation.assets[file] = modern;
+          // compilation.assets[file] = modern;
 
           if (legacy) {
             compilation.assets[legacyFile] = legacy;
